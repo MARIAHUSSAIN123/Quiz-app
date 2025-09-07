@@ -1,5 +1,10 @@
-/* script.js
-   Put this file in same folder and open index.html
+/* script.js for JavaScript Quiz - 70 Questions
+   Features added:
+   - submit highlights correct (green) and wrong (red)
+   - builds a detailed "wrong answers" list (student choice + correct)
+   - Show/Hide Answer Key button
+   - CSV export includes student's answer and result
+   - Reset and Timer support
 */
 
 /* ========== Quiz Data (70 items) ========== */
@@ -85,13 +90,15 @@ const quizData = [
   {q:'Q70. Fill in the blank: The root node of any HTML document is ______.', opts:['head','body','document','window'], ans:2}
 ];
 
-/* ========== Build UI ========== */
+/* ========================== RENDER QUIZ ========================== */
 const questionsContainer = document.getElementById('questionsContainer');
 const miniNav = document.getElementById('miniNav');
 const answeredCountEl = document.getElementById('answeredCount');
 const sideAnswered = document.getElementById('sideAnswered');
 const resultPanel = document.getElementById('resultPanel');
+const answerKeyDiv = document.getElementById('answerKey');
 
+// Build one question block
 function makeQuestionBlock(item, idx){
   const qWrap = document.createElement('div');
   qWrap.className = 'q';
@@ -136,6 +143,7 @@ function makeQuestionBlock(item, idx){
   return qWrap;
 }
 
+// Build all questions and mini-nav
 function buildQuestions(){
   const sections = [
     {title:'A. Basics (1-15)', from:1, to:15},
@@ -156,131 +164,216 @@ function buildQuestions(){
       questionsContainer.appendChild(block);
 
       // mini nav button
-      const navBtn = document.createElement('button');
-      navBtn.textContent = i;
-      navBtn.title = `Go to Q${i}`;
-      navBtn.addEventListener('click', ()=> {
-        document.getElementById('qBlock' + i).scrollIntoView({behavior:'smooth', block:'center'});
-      });
-      miniNav.appendChild(navBtn);
+      if(miniNav){
+        const navBtn = document.createElement('button');
+        navBtn.textContent = i;
+        navBtn.title = `Go to Q${i}`;
+        navBtn.addEventListener('click', ()=> {
+          document.getElementById('qBlock' + i).scrollIntoView({behavior:'smooth', block:'center'});
+        });
+        miniNav.appendChild(navBtn);
+      }
     }
   });
 }
 buildQuestions();
 
-/* ========== Interactions ========== */
+/* ========================== INTERACTIONS ========================== */
 function updateCounts(){
   let answered = 0;
   for(let i=1;i<=quizData.length;i++){
     const radios = document.getElementsByName('q'+i);
     if(Array.from(radios).some(r=>r.checked)) answered++;
   }
-  answeredCountEl.textContent = answered;
-  sideAnswered.textContent = answered;
+  if(answeredCountEl) answeredCountEl.textContent = answered;
+  if(sideAnswered) sideAnswered.textContent = answered;
 }
 document.addEventListener('change', updateCounts);
 updateCounts();
 
-/* Submit logic */
-document.getElementById('submitBtn').addEventListener('click', function(){
-  const total = quizData.length;
-  let score = 0;
+/* ========================== SUBMIT LOGIC (with wrong answers details) ========================== */
+const submitBtn = document.getElementById('submitBtn');
+if(submitBtn){
+  submitBtn.addEventListener('click', function(){
+    const total = quizData.length;
+    let score = 0;
+    const wrongDetails = []; // objects: {n, q, chosenText, correctText}
 
-  // remove previous highlights
-  document.querySelectorAll('.opt').forEach(el=> el.classList.remove('correct','wrong'));
+    // clear previous highlights
+    document.querySelectorAll('.opt').forEach(el=> el.classList.remove('correct','wrong','selected'));
 
-  for(let i=1;i<=total;i++){
-    const radios = Array.from(document.getElementsByName('q'+i));
-    const selected = radios.find(r=>r.checked);
-    const correctIndex = quizData[i-1].ans;
+    for(let i=1;i<=total;i++){
+      const radios = Array.from(document.getElementsByName('q'+i));
+      const selected = radios.find(r=>r.checked);
+      const correctIndex = quizData[i-1].ans;
 
-    // highlight correct option
-    radios.forEach(r => {
-      const label = r.closest('label');
-      if(!label) return;
-      const optIdx = Number(r.value);
-      if(optIdx === correctIndex){
-        label.classList.add('correct');
-      }
-    });
+      // highlight correct option
+      radios.forEach(r => {
+        const label = r.closest('label');
+        if(!label) return;
+        const optIdx = Number(r.value);
+        if(optIdx === correctIndex){
+          label.classList.add('correct');
+        }
+      });
 
-    if(selected){
-      if(Number(selected.value) === correctIndex){
-        score++;
+      if(selected){
+        if(Number(selected.value) === correctIndex){
+          score++;
+          // mark student's selected as selected (and it's correct already highlighted)
+          const selLabel = selected.closest('label');
+          if(selLabel) selLabel.classList.add('selected');
+        } else {
+          const chosenLabel = selected.closest('label');
+          if(chosenLabel) chosenLabel.classList.add('wrong');
+          const chosenText = quizData[i-1].opts[Number(selected.value)];
+          const correctText = quizData[i-1].opts[correctIndex];
+          wrongDetails.push({ n:i, q: quizData[i-1].q, chosenText, correctText });
+        }
       } else {
-        const chosenLabel = selected.closest('label');
-        if(chosenLabel) chosenLabel.classList.add('wrong');
+        // Not attempted => add to wrongDetails with chosenText empty
+        const correctText = quizData[i-1].opts[correctIndex];
+        wrongDetails.push({ n:i, q: quizData[i-1].q, chosenText: null, correctText });
       }
     }
-  }
 
-  const pct = Math.round((score/total)*100);
-  resultPanel.className = 'result-box show ' + (pct >= 50 ? 'result-good' : 'result-bad');
-  resultPanel.innerHTML = `<strong>Score: ${score} / ${total}</strong> — ${pct}%<br><small class="muted">Green = correct • Red = your wrong choices</small>`;
-  resultPanel.scrollIntoView({behavior:'smooth', block:'center'});
-});
+    // percentage
+    const pct = Math.round((score/total)*100);
 
-/* Reset */
-document.getElementById('clearBtn').addEventListener('click', function(){
-  if(!confirm('Reset all answers?')) return;
-  for(let i=1;i<=quizData.length;i++){
-    const radios = document.getElementsByName('q'+i);
-    radios.forEach(r => r.checked = false);
-  }
-  document.querySelectorAll('.opt').forEach(el=> el.classList.remove('correct','wrong'));
-  updateCounts();
-  resultPanel.className = 'result-box';
-  resultPanel.innerHTML = '';
-  window.scrollTo({top:0,behavior:'smooth'});
-});
+    if(resultPanel){
+      resultPanel.className = 'result-box show ' + (pct >= 50 ? 'result-good' : 'result-bad');
+      // Build wrong summary HTML
+      let wrongHtml = '';
+      if(wrongDetails.length){
+        wrongHtml = '<ol>';
+        wrongDetails.forEach(w => {
+          const chosenDisplay = w.chosenText === null ? '<em>Not Attempted</em>' : `<strong>Your answer:</strong> ${escapeHtml(w.chosenText)}`;
+          wrongHtml += `<li><div style="margin-bottom:6px;"><strong>Q${w.n}:</strong> ${escapeHtml(w.q)}</div>
+                        <div style="margin-left:10px">${chosenDisplay} &nbsp; <span style="margin-left:12px"><strong>Correct:</strong> ${escapeHtml(w.correctText)}</span></div></li><br>`;
+        });
+        wrongHtml += '</ol>';
+      } else {
+        wrongHtml = '<p class="muted">Great! All answers correct.</p>';
+      }
 
-/* Export results (CSV) */
-document.getElementById('exportBtn').addEventListener('click', () => {
-  let rows = [['Question','Your Answer','Correct Answer','Result']];
-  for(let i=1;i<=quizData.length;i++){
-    const radios = Array.from(document.getElementsByName('q'+i));
-    const selected = radios.find(r=>r.checked);
-    const your = selected ? quizData[i-1].opts[Number(selected.value)] : '';
-    const correct = quizData[i-1].opts[quizData[i-1].ans];
-    const result = your === correct ? 'Correct' : 'Wrong';
-    rows.push([`Q${i}`, your, correct, result]);
-  }
-  const csv = rows.map(r=> r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'js_quiz_results.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-});
+      resultPanel.innerHTML = `<strong>Score: ${score} / ${total}</strong> — ${pct}%<br><br>
+      <div><strong>Wrong / Unattempted (${wrongDetails.length}):</strong></div>
+      <div style="margin-top:8px">${wrongHtml}</div>
+      <div style="margin-top:10px;color:var(--muted);font-size:13px">Green = correct • Red = your wrong choices</div>`;
+      resultPanel.scrollIntoView({behavior:'smooth', block:'center'});
+    }
 
-/* Timer feature (60 minutes default) */
+    // Prepare / update answerKey div content (but keep it hidden until user clicks Show)
+    if(answerKeyDiv){
+      let keyHtml = '<h4>Answer Key</h4><ol style="margin-left:16px">';
+      quizData.forEach((item, idx) => {
+        const correct = item.opts[item.ans];
+        keyHtml += `<li><strong>Q${idx+1}:</strong> ${escapeHtml(correct)}</li>`;
+      });
+      keyHtml += '</ol>';
+      answerKeyDiv.innerHTML = keyHtml;
+    }
+  });
+}
+
+/* ========================== SHOW/HIDE ANSWER KEY ========================== */
+const showKeyBtn = document.getElementById('showKeyBtn');
+if(showKeyBtn && answerKeyDiv){
+  showKeyBtn.addEventListener('click', () => {
+    if(answerKeyDiv.style.display === 'none' || answerKeyDiv.style.display === ''){
+      answerKeyDiv.style.display = 'block';
+      showKeyBtn.textContent = 'Hide Answer Key';
+      // scroll into view
+      answerKeyDiv.scrollIntoView({behavior:'smooth', block:'center'});
+    } else {
+      answerKeyDiv.style.display = 'none';
+      showKeyBtn.textContent = 'Show/Hide Answer Key';
+    }
+  });
+}
+
+/* ========================== RESET ========================== */
+const clearBtn = document.getElementById('clearBtn');
+if(clearBtn){
+  clearBtn.addEventListener('click', function(){
+    if(!confirm('Reset all answers?')) return;
+    for(let i=1;i<=quizData.length;i++){
+      const radios = document.getElementsByName('q'+i);
+      radios.forEach(r => r.checked = false);
+    }
+    document.querySelectorAll('.opt').forEach(el=> el.classList.remove('correct','wrong','selected'));
+    updateCounts();
+    if(resultPanel){ resultPanel.className = 'result-box'; resultPanel.innerHTML = ''; }
+    if(answerKeyDiv){ answerKeyDiv.style.display = 'none'; }
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+}
+
+/* ========================== EXPORT CSV ========================== */
+const exportBtn = document.getElementById('exportBtn');
+if(exportBtn){
+  exportBtn.addEventListener('click', () => {
+    let rows = [['Question','Your Answer','Correct Answer','Result']];
+    for(let i=1;i<=quizData.length;i++){
+      const radios = Array.from(document.getElementsByName('q'+i));
+      const selected = radios.find(r=>r.checked);
+      const your = selected ? quizData[i-1].opts[Number(selected.value)] : '';
+      const correct = quizData[i-1].opts[quizData[i-1].ans];
+      const result = your === correct ? 'Correct' : 'Wrong';
+      rows.push([`Q${i}`, your, correct, result]);
+    }
+    const csv = rows.map(r=> r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'js_quiz_results.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+/* ========================== TIMER (optional) ========================== */
 let timerInterval = null;
-document.getElementById('startTimerBtn').addEventListener('click', () => {
-  if(timerInterval){
-    clearInterval(timerInterval);
-    timerInterval = null;
-    document.getElementById('startTimerBtn').textContent = 'Start 60m Timer';
-    document.getElementById('timer').textContent = '—';
-    return;
-  }
-  let seconds = 60 * 60; // 60 minutes
-  document.getElementById('startTimerBtn').textContent = 'Stop Timer';
-  timerInterval = setInterval(() => {
-    seconds--;
-    const m = String(Math.floor(seconds/60)).padStart(2,'0');
-    const s = String(seconds%60).padStart(2,'0');
-    document.getElementById('timer').textContent = `${m}:${s}`;
-    if(seconds <= 0){
+const startTimerBtn = document.getElementById('startTimerBtn');
+if(startTimerBtn){
+  startTimerBtn.addEventListener('click', () => {
+    const timerEl = document.getElementById('timer');
+    if(timerInterval){
       clearInterval(timerInterval);
       timerInterval = null;
-      document.getElementById('startTimerBtn').textContent = 'Start 60m Timer';
-      alert('Time is up! Submitting answers automatically.');
-      document.getElementById('submitBtn').click();
+      startTimerBtn.textContent = 'Start 60m Timer';
+      if(timerEl) timerEl.textContent = '—';
+      return;
     }
-  }, 1000);
-});
+    let seconds = 60 * 60; // 60 minutes
+    startTimerBtn.textContent = 'Stop Timer';
+    timerInterval = setInterval(() => {
+      seconds--;
+      const m = String(Math.floor(seconds/60)).padStart(2,'0');
+      const s = String(seconds%60).padStart(2,'0');
+      if(timerEl) timerEl.textContent = `${m}:${s}`;
+      if(seconds <= 0){
+        clearInterval(timerInterval);
+        timerInterval = null;
+        startTimerBtn.textContent = 'Start 60m Timer';
+        alert('Time is up! Submitting answers automatically.');
+        if(submitBtn) submitBtn.click();
+      }
+    }, 1000);
+  });
+}
 
-/* load year in footer */
-document.getElementById('year').textContent = new Date().getFullYear();
+/* ========================== UTILS ========================== */
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/* Set footer year if element exists */
+const yearEl = document.getElementById('year');
+if(yearEl) yearEl.textContent = new Date().getFullYear();
