@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>JavaScript Quiz — 70 Questions (Final)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="app-header" role="banner">
+      <div class="logo">JS</div>
+      <div class="title">
+        <h1>JavaScript Quiz — 70 Questions</h1>
+        <p>Mobile-friendly • One answer per question • No server needed</p>
+      </div>
+    </header>
+
+    <div class="main">
+      <section class="card quiz" aria-labelledby="quizTitle">
+        <div class="controls-top">
+          <div class="meta">
+            <strong id="quizTitle">Full JavaScript MCQ Test</strong><br>
+            <span class="muted">Sections: A. Basics • B. Arrays & Strings • C. Functions & Scope • D. Events & Date/Time • E. DOM</span>
+          </div>
+          <div class="mini-nav" id="miniNav" aria-hidden="true"></div>
+        </div>
+
+        <div class="questions" id="questionsContainer" tabindex="0" aria-live="polite">
+          <!-- Questions injected by script.js -->
+        </div>
+
+        <div class="controls-bottom">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn" id="submitBtn">Submit Answers</button>
+            <button class="btn secondary" id="clearBtn">Reset</button>
+            <button class="btn secondary" id="showKeyBtn">Show/Hide Answer Key</button>
+          </div>
+          <div style="color:var(--muted)">Answered: <strong id="answeredCount">0</strong>/70</div>
+        </div>
+
+      </section>
+
+      <aside class="card side" aria-labelledby="sideTitle">
+        <div id="sideTitle"><strong>Exam Summary</strong></div>
+        <div class="stats" style="margin-top:8px">
+          <div class="stat"><div>Questions</div><strong>70</strong></div>
+          <div class="stat"><div>Answered</div><strong id="sideAnswered">0</strong></div>
+          <div class="stat"><div>Time</div><strong id="timer">—</strong></div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="startTimerBtn">Start 60m Timer</button>
+          <button class="btn secondary" id="exportBtn">Export Results (CSV)</button>
+        </div>
+
+        <div id="resultPanel" class="result-box" aria-live="polite"></div>
+        <div id="answerKey" class="result-box" style="display:none; margin-top:12px;"></div>
+
+        <div style="margin-top:12px;color:var(--muted);font-size:13px">Tip: Tap any option to select. After submit, correct answers highlight green and incorrect red.</div>
+      </aside>
+    </div>
+
+    <footer class="app-footer">
+      <small>© <span id="year"></span> Maria — JavaScript Quiz • Made with ❤️</small>
+      <small class="muted">Save or share the HTML + CSS + JS files — works offline</small>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
